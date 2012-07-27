@@ -1,0 +1,5 @@
+GET     /                                       Application.index
+POST    /										Application.convertMboxFile
+GET     /favicon.ico                            404
+GET     /public/                                staticDir:public
+*       /{controller}/{action}                  {controller}.{action}

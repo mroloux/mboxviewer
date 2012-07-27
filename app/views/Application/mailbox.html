@@ -1,0 +1,6 @@
+#{extends 'main.html' /}
+#{set title:'mboxviewer' /}
+
+#{list mailbox.emails}
+	<div>From: ${_.from}</div>
+#{/list}
