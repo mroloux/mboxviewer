@@ -1,6 +1,59 @@
-#{extends 'main.html' /}
-#{set title:'mboxviewer' /}
-
-#{list mailbox.emails}
-	<div>From: ${_.from}</div>
-#{/list}
+<!DOCTYPE html>
+<html>
+    <head>
+    	<title>mbox</title>
+    	<meta charset="utf-8">
+		<style type="text/css">
+			#{include '/public/stylesheets/bootstrap.min.css'/}
+		</style>
+		<style type="text/css">
+			.modal { width: 940px; margin-left: -470px; }
+		</style>
+    </head>
+    <body> 
+    	<div class="container">
+			<table class="table">
+				<thead>
+					<tr>
+						<th>Date</th>
+						<th>Subject</th>
+						<th>From</th>
+					</tr>
+				</thead>
+				<tbody>
+					#{list items:mailbox.emails, as:'email'}
+						<tr class="mail">
+							<td style="width: 60px;">${email.date ? email.date.format('yy-MM-dd') : ''}</td>
+							<td>${email.subject}</td>
+							<td style="width: 150px;">#{addresses email.from /}</td>
+						</tr>
+					#{/list}
+				</tbody>
+			</table>
+			
+			<div id="fullEmails">
+				#{list items:mailbox.emails, as:'email'}
+					<div class="modal hide">
+						<div class="modal-header">
+							<button type="button" class="close" data-dismiss="modal">×</button>
+							<h3>${email.subject}</h3>
+						</div>
+						<div class="modal-body">${email.bodyAsString().raw()}</div>
+					</div>
+				#{/list}
+			</div>
+		</div>
+		
+    	<script type="text/javascript">#{include '/public/javascripts/jquery.1.7.2.min.js'/}</script>
+    	<script type="text/javascript">#{include '/public/javascripts/bootstrap.js'/}</script>
+    	<script type="text/javascript">
+    	$(function() {
+    		$('.mail').click(function() {
+    			var clickedEmailIndex = $(this).index();
+    			var fullEmailDiv = $('#fullEmails > div')[clickedEmailIndex];
+    			$(fullEmailDiv).modal();
+    		});
+    	});
+    	</script>
+	</body>
+</html>
