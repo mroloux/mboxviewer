@@ -1,10 +1,9 @@
 package models;
 
 import static com.google.appengine.repackaged.com.google.common.collect.Lists.newArrayList;
-import static org.apache.commons.io.IOUtils.readLines;
-import static org.apache.commons.io.IOUtils.toInputStream;
+import static org.apache.commons.io.IOUtils.toByteArray;
 
-import java.io.FileNotFoundException;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
@@ -20,46 +19,59 @@ public class Mailbox {
 		DefaultStorageProvider.setInstance(new MemoryStorageProvider());
 	}
 
-	private List<Email> emails = newArrayList();
+	private List<Message> emails = newArrayList();
 
 	public Mailbox(InputStream input) {
-		for (Message message : getMessages(input)) {
-			emails.add(new Email(message));
+		try {
+			byte[] inputAsBytes = toByteArray(input);
+			if (inputAsBytes.length == 0) {
+				return;
+			}
+			getMessages(inputAsBytes);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
 		}
 	}
 
-	private List<Message> getMessages(InputStream input) {
+	protected void getMessages(byte[] inputAsBytes) {
 		try {
-			List<Message> messages = newArrayList();
-			StringBuilder currentMessage = new StringBuilder();
-			for (String line : readLines(input)) {
-				if (isMessageMarker(line)) {
-					if (currentMessage.length() != 0) {
-						messages.add(new Message(toInputStream(currentMessage.toString())));
+			int startIndexOfMessage = 0;
+			boolean previousMessageMarkerFound = false;
+			for (int i = 0; i < inputAsBytes.length - 5; ++i) {
+				if (messageMarkerAt(inputAsBytes, i)) {
+					if (previousMessageMarkerFound) {
+						emails.add(new CustomMessage(new ByteArrayInputStream(inputAsBytes, startIndexOfMessage, i - startIndexOfMessage)));
 					}
-					currentMessage = new StringBuilder();
-				} else {
-					currentMessage.append(line);
+					previousMessageMarkerFound = true;
+					startIndexOfMessage = i;
 				}
 			}
-			if (currentMessage.length() != 0) {
-				messages.add(new Message(toInputStream(currentMessage.toString())));
-			}
-			return messages;
+			emails.add(new CustomMessage(new ByteArrayInputStream(inputAsBytes, startIndexOfMessage, inputAsBytes.length - startIndexOfMessage)));
 		} catch (MimeIOException e) {
-			throw new RuntimeException(e);
-		} catch (FileNotFoundException e) {
 			throw new RuntimeException(e);
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
 	}
 
-	private boolean isMessageMarker(String line) {
-		return line.toLowerCase().startsWith("from ");
+	private boolean messageMarkerAt(byte[] inputAsBytes, int i) {
+		String extractedString = new String(inputAsBytes, i, 5);
+		return isMessagePrefix(extractedString) && (startOfMessage(i) || startOfLine(inputAsBytes, i));
 	}
 
-	public List<Email> getEmails() {
+	private boolean startOfLine(byte[] inputAsBytes, int i) {
+		return inputAsBytes[i - 1] == '\n';
+	}
+
+	private boolean startOfMessage(int i) {
+		return i == 0;
+	}
+
+	protected boolean isMessagePrefix(String extractedString) {
+		return extractedString.toLowerCase().startsWith("from ");
+	}
+
+	public List<Message> getEmails() {
 		return emails;
 	}
 
